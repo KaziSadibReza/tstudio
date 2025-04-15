@@ -1,0 +1,8 @@
+*
+!.gitignore
+!README.md                                           
+!wp-content/                                
+!wp-content/plugins/                        
+wp-content/plugins/*                        
+!wp-content/plugins/logo-to-image-generator/
+!wp-content/plugins/logo-to-image-generator/*
