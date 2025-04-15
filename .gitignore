@@ -1,6 +1,9 @@
 *
 !.gitignore
-!README.md                                           
+!README.md
+!.github
+!.github/*
+!.github/workflows/*                                           
 !wp-content/                                
 !wp-content/plugins/                        
 wp-content/plugins/*                        

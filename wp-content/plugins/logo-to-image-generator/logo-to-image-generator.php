@@ -1,12 +1,11 @@
 <?php
 /**
  * Plugin Name: Logo to Image Generator
- * Plugin URI: https://example.com/logo-to-image-generator
+ * Plugin URI: https://github.com/KaziSadibReza/tstudio
  * Description: A basic plugin that will generate images from specified logos.
  * Version: 1.0
  * Author: Kazi Sadib Reza
- * Author URI: https://example.com
- * 
+ * Author URI: https://github.com/KaziSadibReza
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
