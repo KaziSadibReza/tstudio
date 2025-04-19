@@ -9,3 +9,7 @@
 wp-content/plugins/*                        
 !wp-content/plugins/logo-to-image-generator/
 !wp-content/plugins/logo-to-image-generator/*
+!wp-content/plugins/logo-to-image-generator/includes/*
+!wp-content/plugins/logo-to-image-generator/assets/*
+!wp-content/plugins/logo-to-image-generator/assets/css/*
+!wp-content/plugins/logo-to-image-generator/assets/js/*

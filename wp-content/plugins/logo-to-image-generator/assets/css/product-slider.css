@@ -1,0 +1,139 @@
+/* Loading overlay and spinner */
+.lig-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.lig-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: lig-spin 1s linear infinite;
+}
+
+@keyframes lig-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.lig-product-slider-container {
+  display: flex;
+  gap: 20px;
+  max-width: 100%;
+  margin: 0 auto;
+  position: relative;
+}
+
+.lig-main-slider {
+  flex: 1;
+  max-width: 80%;
+}
+
+.lig-main-slider .lig-slide img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.lig-vertical-nav {
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.lig-nav-item {
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.lig-nav-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.lig-nav-item.active {
+  border-color: #000;
+}
+
+.lig-nav-item:hover {
+  opacity: 0.8;
+}
+
+.lig-wapo-images {
+  margin-top: 10px;
+}
+
+.lig-wapo-images img {
+  width: 100%;
+  height: auto;
+  margin-bottom: 10px;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.lig-wapo-images img:hover {
+  opacity: 0.8;
+}
+
+.lig-wapo-images img.active {
+  border-color: #000;
+}
+
+/* Slick slider customization */
+.slick-prev,
+.slick-next {
+  z-index: 1;
+}
+.slick-prev:before,
+.slick-next:before {
+  color: #000;
+}
+
+.slick-prev {
+  left: 10px;
+}
+
+.slick-next {
+  right: 10px;
+}
+
+@media (max-width: 768px) {
+  .lig-product-slider-container {
+    flex-direction: column;
+  }
+
+  .lig-main-slider {
+    max-width: 100%;
+  }
+
+  .lig-vertical-nav {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-height: none;
+  }
+
+  .lig-nav-item {
+    min-width: 100px;
+  }
+}
