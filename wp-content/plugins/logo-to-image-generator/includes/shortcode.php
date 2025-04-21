@@ -30,9 +30,9 @@ function lig_product_slider_shortcode($atts) {
         <?php
             foreach ($all_image_ids as $image_id) {
                 if (!$image_id) continue;
-                $thumb_url = wp_get_attachment_image_url($image_id, 'thumbnail');
+                $full_image_url = wp_get_attachment_image_url($image_id, 'full');
                 echo '<div class="lig-nav-item">';
-                echo '<img src="' . esc_url($thumb_url) . '" alt="Product thumbnail">';
+                echo '<img src="' . esc_url($full_image_url) . '" alt="Product thumbnail">';
                 echo '</div>';
             }
         ?>

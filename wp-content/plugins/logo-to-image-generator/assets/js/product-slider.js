@@ -271,6 +271,47 @@ jQuery(document).ready(($) => {
         const option = $(this);
         const img = option.find("img");
 
+        // Extract background color from the color span
+        let backgroundColor = null;
+        const colorSpan = option.find(".color");
+        if (colorSpan.length) {
+          backgroundColor =
+            colorSpan.css("background-color") || colorSpan.attr("style");
+          // Extract color value if it's in style attribute format
+          if (backgroundColor && backgroundColor.includes("background:")) {
+            backgroundColor = backgroundColor.match(
+              /background:(#[A-Fa-f0-9]{3,6}|rgb\([^)]+\))/i
+            );
+            backgroundColor = backgroundColor ? backgroundColor[1] : null;
+          }
+          console.log("Extracted background color:", backgroundColor);
+
+          // Apply background color to main product navigation items
+          if (backgroundColor) {
+            // First remove any previously applied custom backgrounds
+            $(".lig-nav-item").removeClass("has-custom-background").css({
+              "background-color": "",
+              "border-color": "",
+            });
+
+            // Apply to main navigation items only (not composite images)
+            $(".lig-nav-item").each(function () {
+              const thumbImg = $(this).find("img");
+              if (
+                thumbImg.length &&
+                state.originalImages.includes(thumbImg.attr("src"))
+              ) {
+                $(this)
+                  .css({
+                    "background-color": backgroundColor,
+                    "border-color": backgroundColor,
+                  })
+                  .addClass("has-custom-background");
+              }
+            });
+          }
+        }
+
         if (img.length) {
           const mockupImgSrc = img.attr("src");
           console.log("Option clicked with mockup image:", mockupImgSrc);
@@ -293,7 +334,8 @@ jQuery(document).ready(($) => {
                 // Add the composite image to slider and mark both the option and new thumbnail as active
                 const newThumb = addImageToSlider(
                   compositeImgSrc,
-                  mockupImgSrc
+                  mockupImgSrc,
+                  backgroundColor
                 );
 
                 // Update the active state after the slider has been updated
@@ -307,7 +349,7 @@ jQuery(document).ready(($) => {
               .catch((error) => {
                 console.error("Error creating composite image:", error);
                 // Fallback to original behavior if composite generation fails
-                handleRegularOptionClick(mockupImgSrc, option);
+                handleRegularOptionClick(mockupImgSrc, option, backgroundColor);
               })
               .finally(() => {
                 // Remove loading indicator
@@ -315,7 +357,7 @@ jQuery(document).ready(($) => {
               });
           } else {
             // Original product image or no logo available, use regular handling
-            handleRegularOptionClick(mockupImgSrc, option);
+            handleRegularOptionClick(mockupImgSrc, option, backgroundColor);
           }
         }
       }
@@ -325,7 +367,7 @@ jQuery(document).ready(($) => {
   /**
    * Handle regular option click (original behavior)
    */
-  const handleRegularOptionClick = (imgSrc, option) => {
+  const handleRegularOptionClick = (imgSrc, option, backgroundColor = null) => {
     // Different handling based on image type
     if (state.originalImages.includes(imgSrc)) {
       // Original image: remove any added option image and navigate
@@ -339,7 +381,7 @@ jQuery(document).ready(($) => {
     } else {
       // Different option image: remove previous and add new one
       removeAddedOptionImage();
-      addImageToSlider(imgSrc);
+      addImageToSlider(imgSrc, null, backgroundColor);
     }
 
     updateActiveState(option);
@@ -423,7 +465,11 @@ jQuery(document).ready(($) => {
   /**
    * Add image to slider
    */
-  const addImageToSlider = (imgSrc, originalSrc = null) => {
+  const addImageToSlider = (
+    imgSrc,
+    originalSrc = null,
+    backgroundColor = null
+  ) => {
     // Set as the current option image and track the original mockup
     state.optionImage = imgSrc;
     state.mockupImage = originalSrc;
@@ -432,6 +478,7 @@ jQuery(document).ready(($) => {
     state.addedOptionImages.push({
       image: imgSrc,
       mockup: originalSrc,
+      backgroundColor: backgroundColor,
     });
 
     // Check if this image is already in the slider
@@ -462,6 +509,15 @@ jQuery(document).ready(($) => {
     const newNavItem = $(
       `<div class="lig-nav-item" data-composite="${imgSrc}"><img src="${imgSrc}" alt="Product option thumbnail"></div>`
     );
+
+    // Apply border color to composite image thumbnails
+    if (backgroundColor) {
+      newNavItem
+        .css({
+          "border-color": backgroundColor,
+        })
+        .addClass("has-custom-border");
+    }
 
     // Add to DOM
     $(".lig-main-slider").append(newSlide);
