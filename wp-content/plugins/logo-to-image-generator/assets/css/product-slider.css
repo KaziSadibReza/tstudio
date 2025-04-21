@@ -1,4 +1,4 @@
-/* Loading overlay and spinner */
+/* Loading overlay and skeleton loader */
 .lig-loading-overlay {
   position: absolute;
   top: 0;
@@ -12,21 +12,22 @@
   z-index: 100;
 }
 
-.lig-loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
-  border-radius: 50%;
-  animation: lig-spin 1s linear infinite;
+.lig-loading-skeleton {
+  width: 100%;
+  height: 100%;
+  background-color: #e0e0e0;
+  animation: lig-skeleton-pulse 1.5s infinite ease-in-out;
 }
 
-@keyframes lig-spin {
+@keyframes lig-skeleton-pulse {
   0% {
-    transform: rotate(0deg);
+    background-color: #e0e0e0;
+  }
+  50% {
+    background-color: #f0f0f0;
   }
   100% {
-    transform: rotate(360deg);
+    background-color: #e0e0e0;
   }
 }
 
@@ -136,4 +137,30 @@
   .lig-nav-item {
     min-width: 100px;
   }
+}
+
+/* Custom cart/checkout thumbnail styling */
+.lig-custom-thumbnail {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+td.product-thumbnail img.lig-custom-thumbnail {
+  width: 90px;
+  height: auto;
+  margin: 0;
+  max-width: 90px;
+}
+
+.woocommerce-cart-form .lig-custom-thumbnail,
+.woocommerce-checkout .lig-custom-thumbnail,
+.woocommerce-order-details .lig-custom-thumbnail {
+  border: 1px solid #ddd;
+  padding: 2px;
+}
+
+.woocommerce-mini-cart-item .lig-custom-thumbnail {
+  width: 45px !important;
+  height: auto !important;
 }

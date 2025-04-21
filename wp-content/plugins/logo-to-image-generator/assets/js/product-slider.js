@@ -8,7 +8,8 @@ jQuery(document).ready(($) => {
     sliderInitialized: false,
     logoImageUrl: null, // Store the logo image URL
     compositeImages: {}, // Cache for composite images
-    addedOptionImages: [], // Track all added option images
+    addedOptionImages: [], // Track all added option images,
+    activeImageUrl: null, // Track the currently active image URL
   };
 
   /**
@@ -22,6 +23,7 @@ jQuery(document).ready(($) => {
     state.mockupImage = null;
     state.compositeImages = {};
     state.addedOptionImages = [];
+    state.activeImageUrl = null;
 
     // Get logo image URL from hidden input
     state.logoImageUrl = $(
@@ -44,6 +46,13 @@ jQuery(document).ready(($) => {
       state.sliderInitialized = true;
     } else {
       console.log("Not enough images for slider, just displaying single image");
+    }
+
+    // Set initial active image URL from the first slide
+    const firstSlideImg = $(".lig-main-slider .lig-slide:first-child img");
+    if (firstSlideImg.length) {
+      state.activeImageUrl = firstSlideImg.attr("src");
+      updateCartImageInput(state.activeImageUrl);
     }
 
     // Set initial active state on first thumbnail
@@ -203,7 +212,7 @@ jQuery(document).ready(($) => {
       $(".lig-product-slider-container")
         .addClass("loading")
         .append(
-          '<div class="lig-loading-overlay"><div class="lig-loading-spinner"></div></div>'
+          '<div class="lig-loading-overlay"><div class="lig-loading-skeleton"></div></div>'
         );
 
       // Send AJAX request to generate image
@@ -549,6 +558,15 @@ jQuery(document).ready(($) => {
       // If it's a thumbnail, update only thumbnails
       $(".lig-nav-item").removeClass("active");
       element.addClass("active");
+
+      // Update the active image URL
+      const activeImg = element.find("img");
+      if (activeImg.length) {
+        state.activeImageUrl = activeImg.attr("src");
+
+        // Update hidden input for cart
+        updateCartImageInput(state.activeImageUrl);
+      }
     } else if (
       element.hasClass("yith-wapo-option") ||
       element.hasClass("wapo-option-image")
@@ -571,6 +589,27 @@ jQuery(document).ready(($) => {
       element.hasClass("lig-nav-item")
     ) {
       element.focus();
+    }
+  };
+
+  /**
+   * Update the hidden input for cart with the active image URL
+   */
+  const updateCartImageInput = (imageUrl) => {
+    // Remove any existing input
+    $('input[name="lig_selected_image"]').remove();
+
+    // Add the hidden input to the cart form
+    if (imageUrl) {
+      const input = $("<input>").attr({
+        type: "hidden",
+        name: "lig_selected_image",
+        value: imageUrl,
+      });
+
+      // Add to the cart form
+      $("form.cart").append(input);
+      console.log("Updated cart image input with URL:", imageUrl);
     }
   };
 
@@ -598,4 +637,12 @@ jQuery(document).ready(($) => {
 
   // Watch for YITH WAPO option changes
   $(document).on("yith-wapo-product-option-changed", setupWapoHandlers);
+
+  // Handle add to cart button click to ensure the selected image is captured
+  $("form.cart").on("submit", function () {
+    // Make sure the hidden input is present with the current active image
+    if (state.activeImageUrl) {
+      updateCartImageInput(state.activeImageUrl);
+    }
+  });
 });

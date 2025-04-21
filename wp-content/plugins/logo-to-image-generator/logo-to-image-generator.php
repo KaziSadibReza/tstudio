@@ -4,7 +4,7 @@
  * Plugin URI: https://github.com/KaziSadibReza/tstudio
  * Description: Generate images with logos overlaid on product mockups
  * Version: 1.0.0
- * Author: Your Name
+ * Author: Kazi Sadib Reza
  * Author URI: https://github.com/KaziSadibReza
  * Text Domain: logo-to-image-generator
  * Requires at least: 5.0
@@ -32,3 +32,4 @@ add_action('wp_enqueue_scripts', 'lig_localize_ajax_script', 99);
 require_once(LIG_PLUGIN_DIR . 'includes/enqueue.php');
 require_once(LIG_PLUGIN_DIR . 'includes/shortcode.php');
 require_once(LIG_PLUGIN_DIR . 'includes/ajax-handlers.php');
+require_once(LIG_PLUGIN_DIR . 'includes/cart-image-handler.php'); // Add our new file
