@@ -9,7 +9,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 100;
+  z-index: 9;
 }
 
 .lig-loading-skeleton {
@@ -110,17 +110,49 @@
 .slick-next {
   z-index: 1;
 }
-.slick-prev:before,
-.slick-next:before {
-  color: #000;
+
+/* Custom arrows for slider */
+.custom-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  background-color: transparent;
+  border-radius: 50%;
+  border: 1px solid;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  color: #333;
+  padding: 0;
+  outline: none;
+}
+.custom-arrow:hover {
+  border-color: #333;
 }
 
-.slick-prev {
+.custom-arrow svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.slick-prev.custom-arrow {
   left: 10px;
 }
 
-.slick-next {
+.slick-next.custom-arrow {
   right: 10px;
+}
+
+/* Override default slick arrow styles */
+.slick-prev:before,
+.slick-next:before {
+  content: "";
+  display: none;
 }
 
 @media (max-width: 768px) {

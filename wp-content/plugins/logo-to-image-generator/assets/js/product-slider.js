@@ -10,6 +10,57 @@ jQuery(document).ready(($) => {
     compositeImages: {}, // Cache for composite images
     addedOptionImages: [], // Track all added option images,
     activeImageUrl: null, // Track the currently active image URL
+    zoomEnabled: true, // Track if zoom is enabled
+  };
+
+  /**
+   * Initialize zoom functionality on product images
+   */
+  const initProductZoom = () => {
+    // First remove any existing zoom elements
+    $(".zoomContainer").remove();
+
+    // Apply zoom to each product image in the slider
+    $(".lig-main-slider .lig-slide img").each((_, img) => {
+      $(img).removeData("elevateZoom");
+
+      // Initialize zoom with settings similar to WooCommerce
+      $(img).elevateZoom({
+        zoomType: "inner",
+        cursor: "crosshair",
+        zoomWindowFadeIn: 300,
+        zoomWindowFadeOut: 300,
+        responsive: true,
+        scrollZoom: false,
+      });
+    });
+  };
+
+  /**
+   * Refresh zoom on active slide
+   */
+  const refreshZoomOnActiveSlide = () => {
+    if (!state.zoomEnabled) return;
+
+    // Wait a moment for slide transition to complete
+    setTimeout(() => {
+      // Get current active slide image
+      const activeSlideImg = $(".lig-main-slider .slick-active img");
+      if (activeSlideImg.length) {
+        // Remove previous zoom
+        activeSlideImg.removeData("elevateZoom");
+        $(".zoomContainer").remove();
+
+        // Re-initialize zoom on active image
+        activeSlideImg.elevateZoom({
+          zoomType: "inner",
+          cursor: "crosshair",
+          zoomWindowFadeIn: 300,
+          zoomWindowFadeOut: 300,
+          responsive: true,
+        });
+      }
+    }, 200);
   };
 
   /**
@@ -60,6 +111,11 @@ jQuery(document).ready(($) => {
 
     // Set up YITH WAPO option handlers
     setupWapoHandlers();
+
+    // Initialize zoom functionality after slider is ready
+    if (state.zoomEnabled) {
+      setTimeout(initProductZoom, 500);
+    }
   };
 
   /**
@@ -70,6 +126,9 @@ jQuery(document).ready(($) => {
     if ($(".lig-main-slider").hasClass("slick-initialized")) {
       $(".lig-main-slider").slick("unslick");
     }
+
+    // Cleanup any zoom containers
+    $(".zoomContainer").remove();
 
     // Initialize the slider with settings optimized for performance
     $(".lig-main-slider").slick({
@@ -82,10 +141,21 @@ jQuery(document).ready(($) => {
       pauseOnHover: true,
       accessibility: true,
       touchThreshold: 10,
+      prevArrow:
+        '<button type="button" class="slick-prev custom-arrow"><svg width="800px" height="800px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12H20M4 12L8 8M4 12L8 16" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>',
+      nextArrow:
+        '<button type="button" class="slick-next custom-arrow"><svg width="800px" height="800px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+        '<path d="M4 12H20M20 12L16 8M20 12L16 16" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+        "</svg></button>",
     });
 
     // Set up slider navigation events
     setupSliderEvents();
+
+    // Initialize zoom after slider is ready
+    if (state.zoomEnabled) {
+      setTimeout(initProductZoom, 300);
+    }
   };
 
   /**
@@ -163,10 +233,16 @@ jQuery(document).ready(($) => {
       $(this).attr("data-index", index);
     });
 
-    // Track slider changes with arrow function
+    // Track slider changes with arrow function and handle zoom
     $(".lig-main-slider").on(
       "beforeChange",
       (_, slick, currentSlide, nextSlide) => {
+        // First destroy any zoom to prevent issues
+        $(".lig-main-slider .slick-slide img").each(function () {
+          $(this).removeData("elevateZoom");
+        });
+        $(".zoomContainer").remove();
+
         const nextImgSrc = $(".lig-main-slider .slick-slide")
           .eq(nextSlide)
           .find("img")
@@ -182,6 +258,11 @@ jQuery(document).ready(($) => {
           : updateActiveState($(".lig-nav-item").eq(nextSlide));
       }
     );
+
+    // After slide change, reinitialize zoom on the active slide
+    $(".lig-main-slider").on("afterChange", (_, slick, currentSlide) => {
+      refreshZoomOnActiveSlide();
+    });
 
     // Handle arrow key navigation in the slider
     $(".lig-main-slider, .lig-nav-item").on("keydown", function (e) {
@@ -491,6 +572,12 @@ jQuery(document).ready(($) => {
       }
     }
 
+    // Clean up zoom before unslicking
+    $(".zoomContainer").remove();
+    $(".lig-main-slider .slick-slide img").each(function () {
+      $(this).removeData("elevateZoom");
+    });
+
     // Stop slider if initialized
     if (
       state.sliderInitialized &&
@@ -600,6 +687,11 @@ jQuery(document).ready(($) => {
       if (matchingThumb && matchingThumb.length) {
         updateActiveState(matchingThumb);
       }
+
+      // Apply zoom to the new active slide after navigation
+      setTimeout(() => {
+        refreshZoomOnActiveSlide();
+      }, 300);
     }
   };
 
@@ -668,6 +760,20 @@ jQuery(document).ready(($) => {
       console.log("Updated cart image input with URL:", imageUrl);
     }
   };
+
+  // Load elevateZoom plugin if not already loaded
+  if (typeof $.fn.elevateZoom === "undefined") {
+    $("<script>")
+      .attr(
+        "src",
+        "https://cdnjs.cloudflare.com/ajax/libs/elevatezoom/3.0.8/jquery.elevatezoom.min.js"
+      )
+      .on("load", function () {
+        console.log("ElevateZoom loaded dynamically");
+        initProductZoom();
+      })
+      .appendTo("head");
+  }
 
   // Initialize on page load
   initProductSlider();

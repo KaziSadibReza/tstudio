@@ -1,0 +1,35 @@
+/* Product Zoom Styling */
+
+.lig-main-slider .lig-slide img {
+  cursor: crosshair;
+}
+
+.zoomContainer {
+  z-index: 10;
+  overflow: hidden;
+  position: relative;
+}
+
+.zoomWindow {
+  border: 1px solid #ddd !important;
+  background-color: #fff !important;
+}
+
+/* Responsive zoom adjustments */
+@media (max-width: 768px) {
+  .zoomContainer {
+    display: none; /* Disable zoom on smaller screens */
+  }
+}
+
+/* Loading indicator during zoom initialization */
+.lig-zoom-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.8);
+  padding: 10px;
+  border-radius: 5px;
+  z-index: 10;
+}

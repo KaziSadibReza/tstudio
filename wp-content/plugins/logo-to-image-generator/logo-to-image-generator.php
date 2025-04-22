@@ -28,6 +28,7 @@ function lig_localize_ajax_script() {
 }
 add_action('wp_enqueue_scripts', 'lig_localize_ajax_script', 99);
 
+
 // Load required files
 require_once(LIG_PLUGIN_DIR . 'includes/enqueue.php');
 require_once(LIG_PLUGIN_DIR . 'includes/shortcode.php');
