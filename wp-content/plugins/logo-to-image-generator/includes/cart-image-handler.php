@@ -41,6 +41,9 @@ class LIG_Cart_Image_Handler {
         
         // Change image in order emails
         add_filter('woocommerce_order_item_product', array($this, 'modify_order_item_product_object'), 10, 2);
+        
+        // Add specific hook for email images
+        add_filter('woocommerce_email_order_item_thumbnail', array($this, 'change_email_order_item_thumbnail'), 20, 2);
     }
 
     /**
@@ -136,14 +139,35 @@ class LIG_Cart_Image_Handler {
             $selected_image = $item->get_meta('_lig_selected_image', true);
             
             if (!empty($selected_image)) {
-                // Use a filter to temporarily modify the product image
-                add_filter('woocommerce_product_get_image', function ($image) use ($selected_image) {
-                    return '<img src="' . esc_url($selected_image) . '" class="lig-custom-thumbnail" alt="Product image" />';
-                }, 10, 1);
+                // Store the custom image URL in the product object using a custom property
+                $product->lig_custom_image = $selected_image;
+                
+                // Use a filter with a high priority to modify the product image
+                add_filter('woocommerce_product_get_image', function($image, $prod) use ($product, $selected_image) {
+                    // Only change the image for our specific product
+                    if ($prod && $product && $prod->get_id() === $product->get_id()) {
+                        return '<img src="' . esc_url($selected_image) . '" class="lig-custom-thumbnail" alt="Product image" width="50" height="50" />';
+                    }
+                    return $image;
+                }, 99, 2);
             }
         }
         
         return $product;
+    }
+    
+    /**
+     * Change the thumbnail in order emails
+     */
+    public function change_email_order_item_thumbnail($thumbnail, $item) {
+        // Get the selected image from order item meta
+        $selected_image = $item->get_meta('_lig_selected_image', true);
+        
+        if (!empty($selected_image)) {
+            return '<img src="' . esc_url($selected_image) . '" class="lig-custom-thumbnail" alt="Product image" style="max-width:50px;height:auto;" />';
+        }
+        
+        return $thumbnail;
     }
 }
 
