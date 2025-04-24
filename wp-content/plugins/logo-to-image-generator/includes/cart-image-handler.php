@@ -41,7 +41,18 @@ class LIG_Cart_Image_Handler {
         
         // Add custom image to email
         add_filter('woocommerce_email_order_item_thumbnail', array($this, 'change_email_order_item_thumbnail'), 10, 4);
+        error_log('LIG Debug: Hooks registered, including email order item thumbnail');
+        
+        // Additional hook for WooCommerce emails that might use a different approach
+        add_action('woocommerce_email_order_details', array($this, 'debug_email_details'), 10, 4);
+
+    add_filter( 'woocommerce_email_order_items_args', array($this,'lig_order_with_product_images'), 10 );
+
+add_filter( 'woocommerce_order_item_name', array($this,'lig_add_email_order_item_permalink'), 10, 2 ); // Product name
+
+
     }
+    
 
     /**
      * Add the selected image to cart item data when adding to cart
@@ -108,8 +119,17 @@ class LIG_Cart_Image_Handler {
      */
     public function add_selected_image_to_order_item($item, $cart_item_key, $cart_item, $order) {
         if (isset($cart_item['lig_selected_image'])) {
+            // Debug log
+            error_log('LIG Debug: Adding custom image to order item: ' . $cart_item['lig_selected_image']);
+            
             // Add as hidden meta data (no need to display in order details)
             $item->add_meta_data('_lig_selected_image', $cart_item['lig_selected_image'], true);
+            
+            // Add with a visible key as a backup method
+            $item->add_meta_data('custom_product_image', $cart_item['lig_selected_image'], true);
+            
+            // Verify meta was added
+            $test = $item->get_meta('_lig_selected_image', true);
         }
     }
 
@@ -127,30 +147,31 @@ class LIG_Cart_Image_Handler {
         return $thumbnail;
     }
     
-    /**
-     * Change the product thumbnail in order emails
-     *
-     * @param string $image The default image HTML
-     * @param object $item The order item object
-     * @param object $order The order object
-     * @param bool $plain_email Whether this is a plain email or not
-     * @return string Modified image HTML
-     */
-    public function change_email_order_item_thumbnail($image, $item, $order, $plain_email = false) {
-        // Don't show images in plain text emails
-        if ($plain_email) {
-            return '';
+
+
+    public function lig_order_with_product_images( $args ) {
+    $args['show_image'] = true;
+    $args['image_size'] = array( 100, 100 );
+    return $args;
+    }
+
+    public function lig_add_email_order_item_permalink( $output_html, $item, $bool = false ) {
+        // Only run in email notifications (not on frontend or my account page)
+        if ( ! is_admin() && ! doing_action( 'woocommerce_email_order_items' ) ) {
+            return $output_html;
         }
-        
+    
         // Get the selected image from order item meta
         $selected_image = $item->get_meta('_lig_selected_image', true);
-        
+    
         if (!empty($selected_image)) {
-            $image = '<img src="' . esc_url($selected_image) . '" class="lig-custom-email-thumbnail" alt="Product image" style="max-width: 100%; height: auto; margin-bottom: 10px;" />';
+            $img_html = '<br><img src="' . esc_url($selected_image) . '" class="lig-custom-thumbnail" style="max-width:100px;" alt="Product image" />';
+            return $output_html . $img_html;
         }
-        
-        return $image;
+    
+        return $output_html;
     }
+    
 
 }
 
