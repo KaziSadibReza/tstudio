@@ -41,10 +41,7 @@ class LIG_Cart_Image_Handler {
         
         // Add custom image to email
         add_filter('woocommerce_email_order_item_thumbnail', array($this, 'change_email_order_item_thumbnail'), 10, 4);
-        error_log('LIG Debug: Hooks registered, including email order item thumbnail');
-        
-        // Additional hook for WooCommerce emails that might use a different approach
-        add_action('woocommerce_email_order_details', array($this, 'debug_email_details'), 10, 4);
+    
 
         add_filter('woocommerce_email_order_items_args', array($this, 'lig_order_with_product_images'), 10);
 
