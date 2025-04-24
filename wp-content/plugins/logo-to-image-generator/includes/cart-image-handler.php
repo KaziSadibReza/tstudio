@@ -4,14 +4,9 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Handles the custom product images in cart, checkout, orders, and emails
+ * Handles the custom product images in cart, checkout, orders 
  */
 class LIG_Cart_Image_Handler {
-
-    /**
-     * Class property to store custom images by product ID 
-     */
-    private $custom_product_images = array();
 
     /**
      * Constructor
@@ -44,18 +39,8 @@ class LIG_Cart_Image_Handler {
         // Change image in order details
         add_filter('woocommerce_order_item_thumbnail', array($this, 'change_order_item_thumbnail'), 10, 2);
         
-        // Change image in order emails
-        add_filter('woocommerce_order_item_product', array($this, 'modify_order_item_product_object'), 10, 2);
-        
-        // Add specific hook for email images
-        add_filter('woocommerce_email_order_item_thumbnail', array($this, 'change_email_order_item_thumbnail'), 20, 2);
-        
-        // Add more specific hooks for email image handling
-        add_action('woocommerce_email_before_order_table', array($this, 'setup_email_images'), 5, 4);
-        add_filter('woocommerce_email_order_items_table', array($this, 'maybe_modify_email_order_items'), 10, 4);
-        
-        // Higher priority filter for product images in emails
-        add_filter('woocommerce_product_get_image', array($this, 'override_product_image_in_emails'), 999, 2);
+        // Add custom image to email
+        add_filter('woocommerce_email_order_item_thumbnail', array($this, 'change_email_order_item_thumbnail'), 10, 4);
     }
 
     /**
@@ -143,111 +128,30 @@ class LIG_Cart_Image_Handler {
     }
     
     /**
-     * Modify the product object for order emails to use our custom image
+     * Change the product thumbnail in order emails
+     *
+     * @param string $image The default image HTML
+     * @param object $item The order item object
+     * @param object $order The order object
+     * @param bool $plain_email Whether this is a plain email or not
+     * @return string Modified image HTML
      */
-    public function modify_order_item_product_object($product, $item) {
-        if ($product && is_object($product) && method_exists($product, 'get_image')) {
-            // Get the selected image from order item meta
-            $selected_image = $item->get_meta('_lig_selected_image', true);
-            
-            if (!empty($selected_image)) {
-                // Store the custom image URL in the product object using a custom property
-                $product->lig_custom_image = $selected_image;
-                
-                // Use a filter with a high priority to modify the product image
-                add_filter('woocommerce_product_get_image', function($image, $prod) use ($product, $selected_image) {
-                    // Only change the image for our specific product
-                    if ($prod && $product && $prod->get_id() === $product->get_id()) {
-                        return '<img src="' . esc_url($selected_image) . '" class="lig-custom-thumbnail" alt="Product image" width="50" height="50" />';
-                    }
-                    return $image;
-                }, 99, 2);
-            }
+    public function change_email_order_item_thumbnail($image, $item, $order, $plain_email = false) {
+        // Don't show images in plain text emails
+        if ($plain_email) {
+            return '';
         }
         
-        return $product;
-    }
-    
-    /**
-     * Change the thumbnail in order emails
-     */
-    public function change_email_order_item_thumbnail($thumbnail, $item) {
         // Get the selected image from order item meta
         $selected_image = $item->get_meta('_lig_selected_image', true);
         
         if (!empty($selected_image)) {
-            return '<img src="' . esc_url($selected_image) . '" class="lig-custom-thumbnail" alt="Product image" style="max-width:50px;height:auto;" />';
-        }
-        
-        return $thumbnail;
-    }
-
-    /**
-     * Setup custom images before email is rendered
-     */
-    public function setup_email_images($order, $sent_to_admin, $plain_text, $email) {
-        if ($plain_text || !$order) {
-            return;
-        }
-        
-        // Get all items from the order
-        $items = $order->get_items();
-        
-        foreach ($items as $item) {
-            $selected_image = $item->get_meta('_lig_selected_image', true);
-            
-            if (!empty($selected_image)) {
-                $product = $item->get_product();
-                if ($product) {
-                    // Store by product ID for later use
-                    $this->custom_product_images[$product->get_id()] = $selected_image;
-                }
-            }
-        }
-        
-        // Force our filter to run during email generation
-        if (!empty($this->custom_product_images)) {
-            // Add debug info to email for troubleshooting
-            echo '<!-- LIG: Custom product images ready for email -->';
-        }
-    }
-    
-    /**
-     * Modify email order items directly if needed
-     */
-    public function maybe_modify_email_order_items($items_table, $order, $sent_to_admin, $plain_text) {
-        if ($plain_text || empty($this->custom_product_images)) {
-            return $items_table;
-        }
-        
-        // If needed, we can directly modify the HTML of the items table here
-        
-        return $items_table;
-    }
-    
-    /**
-     * Override product images globally with very high priority for emails
-     */
-    public function override_product_image_in_emails($image, $product) {
-        // Skip if no product or not in email context
-        if (!$product || !did_action('woocommerce_email_before_order_table')) {
-            return $image;
-        }
-        
-        $product_id = $product->get_id();
-        
-        // Check if we have a custom image for this product
-        if (isset($this->custom_product_images[$product_id])) {
-            $selected_image = $this->custom_product_images[$product_id];
-            
-            return '<img src="' . esc_url($selected_image) . '" 
-                   class="lig-custom-thumbnail" 
-                   alt="Product image" 
-                   style="max-width:100px; height:auto; display:block; margin:0 auto;" />';
+            $image = '<img src="' . esc_url($selected_image) . '" class="lig-custom-email-thumbnail" alt="Product image" style="max-width: 100%; height: auto; margin-bottom: 10px;" />';
         }
         
         return $image;
     }
+
 }
 
 // Initialize the class
