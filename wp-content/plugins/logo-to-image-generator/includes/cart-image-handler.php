@@ -9,6 +9,11 @@ if (!defined('ABSPATH')) {
 class LIG_Cart_Image_Handler {
 
     /**
+     * Class property to store custom images by product ID 
+     */
+    private $custom_product_images = array();
+
+    /**
      * Constructor
      */
     public function __construct() {
@@ -44,6 +49,13 @@ class LIG_Cart_Image_Handler {
         
         // Add specific hook for email images
         add_filter('woocommerce_email_order_item_thumbnail', array($this, 'change_email_order_item_thumbnail'), 20, 2);
+        
+        // Add more specific hooks for email image handling
+        add_action('woocommerce_email_before_order_table', array($this, 'setup_email_images'), 5, 4);
+        add_filter('woocommerce_email_order_items_table', array($this, 'maybe_modify_email_order_items'), 10, 4);
+        
+        // Higher priority filter for product images in emails
+        add_filter('woocommerce_product_get_image', array($this, 'override_product_image_in_emails'), 999, 2);
     }
 
     /**
@@ -168,6 +180,73 @@ class LIG_Cart_Image_Handler {
         }
         
         return $thumbnail;
+    }
+
+    /**
+     * Setup custom images before email is rendered
+     */
+    public function setup_email_images($order, $sent_to_admin, $plain_text, $email) {
+        if ($plain_text || !$order) {
+            return;
+        }
+        
+        // Get all items from the order
+        $items = $order->get_items();
+        
+        foreach ($items as $item) {
+            $selected_image = $item->get_meta('_lig_selected_image', true);
+            
+            if (!empty($selected_image)) {
+                $product = $item->get_product();
+                if ($product) {
+                    // Store by product ID for later use
+                    $this->custom_product_images[$product->get_id()] = $selected_image;
+                }
+            }
+        }
+        
+        // Force our filter to run during email generation
+        if (!empty($this->custom_product_images)) {
+            // Add debug info to email for troubleshooting
+            echo '<!-- LIG: Custom product images ready for email -->';
+        }
+    }
+    
+    /**
+     * Modify email order items directly if needed
+     */
+    public function maybe_modify_email_order_items($items_table, $order, $sent_to_admin, $plain_text) {
+        if ($plain_text || empty($this->custom_product_images)) {
+            return $items_table;
+        }
+        
+        // If needed, we can directly modify the HTML of the items table here
+        
+        return $items_table;
+    }
+    
+    /**
+     * Override product images globally with very high priority for emails
+     */
+    public function override_product_image_in_emails($image, $product) {
+        // Skip if no product or not in email context
+        if (!$product || !did_action('woocommerce_email_before_order_table')) {
+            return $image;
+        }
+        
+        $product_id = $product->get_id();
+        
+        // Check if we have a custom image for this product
+        if (isset($this->custom_product_images[$product_id])) {
+            $selected_image = $this->custom_product_images[$product_id];
+            
+            return '<img src="' . esc_url($selected_image) . '" 
+                   class="lig-custom-thumbnail" 
+                   alt="Product image" 
+                   style="max-width:100px; height:auto; display:block; margin:0 auto;" />';
+        }
+        
+        return $image;
     }
 }
 
