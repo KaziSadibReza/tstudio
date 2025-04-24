@@ -13,7 +13,7 @@ function lig_enqueue_scripts() {
         wp_enqueue_style('slick-theme', 'https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css', array(), '1.8.1');
         wp_enqueue_script('slick', 'https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js', array('jquery'), '1.8.1', true);
         // product zoom
-        wp_enqueue_style('lig-product-zoom', plugin_dir_url(__FILE__) . 'assets/css/product-zoom.css');
+        wp_enqueue_style('lig-product-zoom', plugin_dir_url(__FILE__) . '/assets/css/product-zoom.css');
 
         // Plugin assets
         wp_enqueue_style('lig-product-slider', LIG_PLUGIN_URL . '/assets/css/product-slider.css', array(), '1.0.0');

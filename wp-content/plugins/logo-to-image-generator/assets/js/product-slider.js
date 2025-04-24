@@ -17,6 +17,14 @@ jQuery(document).ready(($) => {
    * Initialize zoom functionality on product images
    */
   const initProductZoom = () => {
+    // First check if elevateZoom is available
+    if (typeof $.fn.elevateZoom === "undefined") {
+      console.log(
+        "ElevateZoom plugin not available, skipping zoom initialization"
+      );
+      return;
+    }
+
     // First remove any existing zoom elements
     $(".zoomContainer").remove();
 
@@ -24,15 +32,19 @@ jQuery(document).ready(($) => {
     $(".lig-main-slider .lig-slide img").each((_, img) => {
       $(img).removeData("elevateZoom");
 
-      // Initialize zoom with settings similar to WooCommerce
-      $(img).elevateZoom({
-        zoomType: "inner",
-        cursor: "crosshair",
-        zoomWindowFadeIn: 300,
-        zoomWindowFadeOut: 300,
-        responsive: true,
-        scrollZoom: false,
-      });
+      try {
+        // Initialize zoom with settings similar to WooCommerce
+        $(img).elevateZoom({
+          zoomType: "inner",
+          cursor: "crosshair",
+          zoomWindowFadeIn: 300,
+          zoomWindowFadeOut: 300,
+          responsive: true,
+          scrollZoom: false,
+        });
+      } catch (e) {
+        console.error("Error initializing zoom:", e);
+      }
     });
   };
 
@@ -111,6 +123,9 @@ jQuery(document).ready(($) => {
 
     // Set up YITH WAPO option handlers
     setupWapoHandlers();
+
+    // Check and select default option if no color option is selected
+    checkAndSelectDefaultOption();
 
     // Initialize zoom functionality after slider is ready
     if (state.zoomEnabled) {
@@ -281,6 +296,24 @@ jQuery(document).ready(($) => {
    */
   const generateCompositeImage = (mockupImageUrl, logoImageUrl) => {
     return new Promise((resolve, reject) => {
+      // Validate image URLs first
+      if (!logoImageUrl || logoImageUrl === "") {
+        console.error("Invalid logo image URL");
+        reject("Invalid logo image URL");
+        return;
+      }
+
+      // Check if mockup is a placeholder/empty image
+      if (
+        !mockupImageUrl ||
+        mockupImageUrl.includes("data:image/gif;base64") ||
+        mockupImageUrl === ""
+      ) {
+        console.error("Invalid mockup image URL (placeholder detected)");
+        reject("Invalid mockup image URL");
+        return;
+      }
+
       // Check if we already have this composite in cache
       const cacheKey = `${mockupImageUrl}|${logoImageUrl}`;
       if (state.compositeImages[cacheKey]) {
@@ -307,7 +340,12 @@ jQuery(document).ready(($) => {
           nonce: lig_ajax.nonce,
         },
         success: function (response) {
-          if (response.success && response.data.url) {
+          if (
+            response &&
+            response.success &&
+            response.data &&
+            response.data.url
+          ) {
             // Cache the URL
             state.compositeImages[cacheKey] = response.data.url;
             resolve(response.data.url);
@@ -318,7 +356,9 @@ jQuery(document).ready(($) => {
             );
           } else {
             console.error("Server response error:", response);
-            reject("Failed to generate composite image");
+            reject(
+              "Failed to generate composite image: Invalid server response"
+            );
           }
         },
         error: function (xhr) {
@@ -396,6 +436,12 @@ jQuery(document).ready(($) => {
         if (img.length) {
           const mockupImgSrc = img.attr("src");
           console.log("Option clicked with mockup image:", mockupImgSrc);
+
+          // Skip empty or placeholder images
+          if (!mockupImgSrc || mockupImgSrc.includes("data:image/gif;base64")) {
+            console.log("Skipping placeholder/empty image");
+            return;
+          }
 
           // First clean up any previous added option images - this needs to completely remove any old images
           removeAddedOptionImage();
@@ -761,18 +807,77 @@ jQuery(document).ready(($) => {
     }
   };
 
-  // Load elevateZoom plugin if not already loaded
+  /**
+   * Check if any color option is selected, and if not, select the first option
+   */
+  const checkAndSelectDefaultOption = () => {
+    // Check if any color option is already selected
+    const hasSelectedOption =
+      $(".yith-wapo-addon-type-color .yith-wapo-option.selected").length > 0;
+
+    if (!hasSelectedOption) {
+      console.log(
+        "No color option selected, delaying auto-selection to ensure images load"
+      );
+
+      // Use a longer delay to ensure images have adequate time to load
+      setTimeout(() => {
+        // Check again if an option was selected during the wait
+        if (
+          $(".yith-wapo-addon-type-color .yith-wapo-option.selected").length > 0
+        ) {
+          console.log(
+            "An option was selected during wait time, skipping auto-selection"
+          );
+          return;
+        }
+
+        // Get the first option
+        const firstOption = $(
+          ".yith-wapo-addon-type-color .yith-wapo-option"
+        ).first();
+
+        if (!firstOption.length) {
+          console.log("No color options found");
+          return;
+        }
+
+        // Safety check - don't auto-select if page isn't fully rendered
+        if (!document.readyState === "complete") {
+          console.log("Page not fully loaded yet, skipping auto-selection");
+          return;
+        }
+
+        console.log("Auto-selecting first color option");
+
+        // Simply select the first option without checking image load status
+        // This is more reliable than trying to determine if images are loaded
+        firstOption.trigger("click");
+        firstOption.addClass("selected");
+      }, 1000); // Increased delay to 1000ms for better reliability
+    } else {
+      console.log("Color option already selected, no auto-selection needed");
+    }
+  };
+
+  // Load elevateZoom plugin if not already loaded, with error handling
   if (typeof $.fn.elevateZoom === "undefined") {
-    $("<script>")
-      .attr(
-        "src",
-        "https://cdnjs.cloudflare.com/ajax/libs/elevatezoom/3.0.8/jquery.elevatezoom.min.js"
-      )
-      .on("load", function () {
-        console.log("ElevateZoom loaded dynamically");
-        initProductZoom();
-      })
-      .appendTo("head");
+    console.log("Loading ElevateZoom dynamically");
+
+    const script = document.createElement("script");
+    script.src =
+      "https://cdnjs.cloudflare.com/ajax/libs/elevatezoom/3.0.8/jquery.elevatezoom.min.js";
+    script.onload = function () {
+      console.log("ElevateZoom loaded successfully");
+      initProductZoom();
+    };
+    script.onerror = function () {
+      console.error(
+        "Failed to load ElevateZoom plugin, zoom functionality disabled"
+      );
+      state.zoomEnabled = false;
+    };
+    document.head.appendChild(script);
   }
 
   // Initialize on page load
@@ -794,11 +899,17 @@ jQuery(document).ready(($) => {
       if (state.sliderInitialized) {
         setupSliderEvents();
       }
+      // Check and select default after AJAX as well
+      checkAndSelectDefaultOption();
     }, 300);
   });
 
   // Watch for YITH WAPO option changes
-  $(document).on("yith-wapo-product-option-changed", setupWapoHandlers);
+  $(document).on("yith-wapo-product-option-changed", function () {
+    setupWapoHandlers();
+    // Check if we need to select the default after options change
+    checkAndSelectDefaultOption();
+  });
 
   // Handle add to cart button click to ensure the selected image is captured
   $("form.cart").on("submit", function () {

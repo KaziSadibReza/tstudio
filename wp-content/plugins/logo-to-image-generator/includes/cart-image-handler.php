@@ -57,7 +57,7 @@ class LIG_Cart_Image_Handler {
      * Preserve custom cart item data when updating quantity
      */
     public function preserve_custom_cart_item_data($cart_item, $cart_id) {
-        // Simply return the cart item - no need to reassign to itself
+        // No changes needed, just return the cart item
         return $cart_item;
     }
 
