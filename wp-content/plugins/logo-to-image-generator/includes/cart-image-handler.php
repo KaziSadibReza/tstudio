@@ -46,11 +46,12 @@ class LIG_Cart_Image_Handler {
         // Additional hook for WooCommerce emails that might use a different approach
         add_action('woocommerce_email_order_details', array($this, 'debug_email_details'), 10, 4);
 
-    add_filter( 'woocommerce_email_order_items_args', array($this,'lig_order_with_product_images'), 10 );
+        add_filter('woocommerce_email_order_items_args', array($this, 'lig_order_with_product_images'), 10);
 
-add_filter( 'woocommerce_order_item_name', array($this,'lig_add_email_order_item_permalink'), 10, 2 ); // Product name
+        add_filter('woocommerce_order_item_name', array($this, 'lig_add_email_order_item_permalink'), 10, 2); // Product name
 
-
+        // Add specific hook for checkout review order
+        add_filter('woocommerce_cart_item_name', array($this, 'modify_checkout_item_name'), 10, 3);
     }
     
 
@@ -89,9 +90,9 @@ add_filter( 'woocommerce_order_item_name', array($this,'lig_add_email_order_item
      * Filter product images globally - especially useful for checkout
      */
     public function filter_product_image($image, $product) {
-        // Only apply during checkout
-        if (!is_checkout()) {
-            return $image;
+        // Don't modify image on checkout page - let modify_checkout_item_name handle it
+        if (is_checkout()) {
+            return '';  // Return empty to prevent duplicate images
         }
         
         // Get the cart to check for our custom images
@@ -106,8 +107,10 @@ add_filter( 'woocommerce_order_item_name', array($this,'lig_add_email_order_item
                 ($cart_item['product_id'] == $product->get_id() || 
                  (isset($cart_item['variation_id']) && $cart_item['variation_id'] == $product->get_id()))) {
                 
-                return '<img src="' . esc_url($cart_item['lig_selected_image']) . 
-                       '" class="lig-custom-thumbnail" alt="Product image" width="50" height="50" />';
+                return sprintf(
+                    '<img src="%s" class="lig-custom-thumbnail" alt="Product image" style="max-width: 50px; height:50px;" />',
+                    esc_url($cart_item['lig_selected_image'])
+                );
             }
         }
         
@@ -149,15 +152,15 @@ add_filter( 'woocommerce_order_item_name', array($this,'lig_add_email_order_item
     
 
 
-    public function lig_order_with_product_images( $args ) {
-    $args['show_image'] = true;
-    $args['image_size'] = array( 100, 100 );
-    return $args;
+    public function lig_order_with_product_images($args) {
+        $args['show_image'] = true;
+        $args['image_size'] = array(100, 100);
+        return $args;
     }
 
-    public function lig_add_email_order_item_permalink( $output_html, $item, $bool = false ) {
+    public function lig_add_email_order_item_permalink($output_html, $item, $bool = false) {
         // Only run in email notifications (not on frontend or my account page)
-        if ( ! is_admin() && ! doing_action( 'woocommerce_email_order_items' ) ) {
+        if (!is_admin() && !doing_action('woocommerce_email_order_items')) {
             return $output_html;
         }
     
@@ -171,8 +174,25 @@ add_filter( 'woocommerce_order_item_name', array($this,'lig_add_email_order_item
     
         return $output_html;
     }
-    
 
+    /**
+     * Modify the item name in checkout to include the correct image
+     */
+    public function modify_checkout_item_name($name, $cart_item, $cart_item_key) {
+        if (!is_checkout()) {
+            return $name;
+        }
+
+        if (isset($cart_item['lig_selected_image'])) {
+            $image = sprintf(
+                '<div class="lig-checkout-image"><img src="%s" class="lig-custom-thumbnail" alt="Product image" style="max-width: 50px; height: 50px;" /></div>',
+                esc_url($cart_item['lig_selected_image'])
+            );
+            return $image . '<div class="lig-checkout-name">' . $name . '</div>';
+        }
+
+        return $name;
+    }
 }
 
 // Initialize the class
