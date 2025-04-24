@@ -39,9 +39,6 @@ class LIG_Cart_Image_Handler {
         // Change image in order details
         add_filter('woocommerce_order_item_thumbnail', array($this, 'change_order_item_thumbnail'), 10, 2);
         
-        // Add custom image to email
-        add_filter('woocommerce_email_order_item_thumbnail', array($this, 'change_email_order_item_thumbnail'), 10, 4);
-    
 
         add_filter('woocommerce_email_order_items_args', array($this, 'lig_order_with_product_images'), 10);
 
@@ -120,7 +117,7 @@ class LIG_Cart_Image_Handler {
     public function add_selected_image_to_order_item($item, $cart_item_key, $cart_item, $order) {
         if (isset($cart_item['lig_selected_image'])) {
             // Debug log
-            error_log('LIG Debug: Adding custom image to order item: ' . $cart_item['lig_selected_image']);
+            // error_log('LIG Debug: Adding custom image to order item: ' . $cart_item['lig_selected_image']);
             
             // Add as hidden meta data (no need to display in order details)
             $item->add_meta_data('_lig_selected_image', $cart_item['lig_selected_image'], true);
