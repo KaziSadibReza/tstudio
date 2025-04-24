@@ -126,7 +126,7 @@ class LIG_Cart_Image_Handler {
             $item->add_meta_data('_lig_selected_image', $cart_item['lig_selected_image'], true);
             
             // Add with a visible key as a backup method
-            $item->add_meta_data('custom_product_image', $cart_item['lig_selected_image'], true);
+            // $item->add_meta_data('custom_product_image', $cart_item['lig_selected_image'], true);
             
             // Verify meta was added
             $test = $item->get_meta('_lig_selected_image', true);
