@@ -39,6 +39,9 @@ class LIG_Cart_Image_Handler {
         // Change image in order details
         add_filter('woocommerce_order_item_thumbnail', array($this, 'change_order_item_thumbnail'), 10, 2);
         
+        // Add custom image to email
+        add_filter('woocommerce_email_order_item_thumbnail', array($this, 'change_email_order_item_thumbnail'), 10, 4);
+    
 
         add_filter('woocommerce_email_order_items_args', array($this, 'lig_order_with_product_images'), 10);
 
