@@ -28,6 +28,13 @@ jQuery(document).ready(($) => {
     // First remove any existing zoom elements
     $(".zoomContainer").remove();
 
+    // Add custom CSS for zoom lens
+    if (!$("#lig-zoom-styles").length) {
+      $("head").append(
+        '<style id="lig-zoom-styles">.zoomContainer .zoomWindow, .zoomLens { background-color: #fff !important; }</style>'
+      );
+    }
+
     // Apply zoom to each product image in the slider
     $(".lig-main-slider .lig-slide img").each((_, img) => {
       $(img).removeData("elevateZoom");
