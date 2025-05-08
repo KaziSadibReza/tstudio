@@ -11,6 +11,7 @@ jQuery(document).ready(($) => {
     addedOptionImages: [], // Track all added option images,
     activeImageUrl: null, // Track the currently active image URL
     zoomEnabled: true, // Track if zoom is enabled
+    activeUpdateTimeout: null, // Timeout for active state updates
   };
 
   /**
@@ -184,76 +185,49 @@ jQuery(document).ready(($) => {
    * Set up slider navigation events
    */
   const setupSliderEvents = () => {
-    // First, ensure we unbind any existing click handlers to prevent duplicates
-    $(document).off("click", ".lig-nav-item");
-    $(".lig-nav-item").off("click keydown");
-
-    // Handle thumbnail clicks directly on elements for better reliability
-    $(".lig-nav-item").each(function (index) {
-      $(this).attr("tabindex", "0"); // Make thumbnails focusable for keyboard users
-
-      $(this).on("click keydown", function (event) {
-        // Handle keyboard events only for Enter (13) or Space (32)
-        if (
-          event.type === "keydown" &&
-          event.keyCode !== 13 &&
-          event.keyCode !== 32
-        ) {
+    $(".lig-nav-item")
+      .off("click keydown")
+      .on("click keydown", function (event) {
+        // Handle keyboard events for Enter (13) or Space (32)
+        if (event.type === "keydown" && ![13, 32].includes(event.keyCode)) {
           return;
         }
 
-        event.preventDefault(); // Prevent any default action
-        event.stopPropagation(); // Stop event from bubbling up
+        event.preventDefault();
+        event.stopPropagation();
 
-        console.log("Thumbnail clicked:", index); // Debug logging
+        const $this = $(this);
+        const imgSrc = $this.find("img").attr("src");
+        const compositeImgSrc = $this.data("composite");
+        let slideIndex = -1;
 
+        // Find the correct slide index
+        $(".lig-main-slider .lig-slide").each((idx, slide) => {
+          const slideImg = $(slide).find("img");
+          if (
+            slideImg.length &&
+            (slideImg.attr("src") === imgSrc ||
+              slideImg.attr("src") === compositeImgSrc)
+          ) {
+            slideIndex = idx;
+            return false;
+          }
+        });
+
+        if (slideIndex === -1) {
+          slideIndex = $this.index();
+        }
+
+        // Ensure slider is initialized
         if (!state.sliderInitialized) {
           initializeSlick();
           state.sliderInitialized = true;
         }
 
-        // Check if this is a composite image thumbnail
-        const compositeImgSrc = $(this).data("composite");
-        if (compositeImgSrc) {
-          // Find the slide with the composite image
-          let slideIndex = -1;
-          $(".lig-main-slider .lig-slide img").each((idx, img) => {
-            if ($(img).attr("src") === compositeImgSrc) {
-              slideIndex = idx;
-            }
-          });
-
-          if (slideIndex !== -1) {
-            $(".lig-main-slider").slick("slickGoTo", slideIndex);
-            updateActiveState($(this));
-            return;
-          }
-        }
-
-        // Use data-index attribute if available, otherwise use the DOM index
-        const clickedIndex = $(this).data("index") || index;
-
-        // Try to find the matching image source
-        const imgSrc = $(this).find("img").attr("src");
-        let slideIndex = state.productImages.indexOf(imgSrc);
-
-        // Fallback to the DOM index if we can't find the image in our array
-        if (slideIndex === -1) {
-          slideIndex = clickedIndex;
-          console.log(
-            `Image src not found in state. Using index ${slideIndex} instead.`
-          );
-        }
-
-        console.log("Going to slide:", slideIndex); // Debug logging
-
+        // Update state and navigate
+        updateActiveState($this);
         $(".lig-main-slider").slick("slickGoTo", slideIndex);
-        updateActiveState($(this));
       });
-
-      // Add data-index attribute for easier tracking
-      $(this).attr("data-index", index);
-    });
 
     // Track slider changes with arrow function and handle zoom
     $(".lig-main-slider").on(
@@ -325,16 +299,23 @@ jQuery(document).ready(($) => {
       const cacheKey = `${mockupImageUrl}|${logoImageUrl}`;
       if (state.compositeImages[cacheKey]) {
         console.log("Using cached composite image URL");
-        resolve(state.compositeImages[cacheKey]);
+        // Even for cached images, add a small delay for better UX
+        setTimeout(() => {
+          resolve(state.compositeImages[cacheKey]);
+        }, 500);
         return;
       }
 
-      // Show loading indicator
+      // Show loading indicator immediately
       $(".lig-product-slider-container")
         .addClass("loading")
         .append(
           '<div class="lig-loading-overlay"><div class="lig-loading-skeleton"></div></div>'
         );
+
+      // Add minimum loading time for better UX
+      const minLoadingTime = 1500; // 1.5 seconds minimum loading time
+      const startTime = Date.now();
 
       // Send AJAX request to generate image
       $.ajax({
@@ -355,7 +336,24 @@ jQuery(document).ready(($) => {
           ) {
             // Cache the URL
             state.compositeImages[cacheKey] = response.data.url;
-            resolve(response.data.url);
+
+            // Calculate remaining time to meet minimum loading duration
+            const elapsedTime = Date.now() - startTime;
+            const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
+
+            // Add delay to ensure loading indicator shows for at least minLoadingTime
+            setTimeout(() => {
+              // Preload the image before resolving
+              const img = new Image();
+              img.onload = () => {
+                resolve(response.data.url);
+              };
+              img.onerror = () => {
+                reject("Failed to load generated image");
+              };
+              img.src = response.data.url;
+            }, remainingTime);
+
             console.log(
               response.data.from_cache
                 ? "Used server-cached composite image"
@@ -373,11 +371,16 @@ jQuery(document).ready(($) => {
           reject("AJAX error generating composite image");
         },
         complete: function () {
-          // Remove loading indicator
-          $(".lig-product-slider-container")
-            .removeClass("loading")
-            .find(".lig-loading-overlay")
-            .remove();
+          // Loading indicator will be removed after the delay
+          const elapsedTime = Date.now() - startTime;
+          const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
+
+          setTimeout(() => {
+            $(".lig-product-slider-container")
+              .removeClass("loading")
+              .find(".lig-loading-overlay")
+              .remove();
+          }, remainingTime);
         },
       });
     });
@@ -754,43 +757,66 @@ jQuery(document).ready(($) => {
   const updateActiveState = (element) => {
     if (!element || !element.length) return;
 
-    // Decide which elements to update based on the element type
-    if (element.hasClass("lig-nav-item")) {
-      // If it's a thumbnail, update only thumbnails
-      $(".lig-nav-item").removeClass("active");
-      element.addClass("active");
+    // Clear any pending updates
+    if (state.activeUpdateTimeout) {
+      clearTimeout(state.activeUpdateTimeout);
+    }
 
-      // Update the active image URL
+    // Synchronous removal of active states
+    $(".lig-nav-item, .yith-wapo-option, .wapo-option-image").removeClass(
+      "active selected"
+    );
+
+    // Force immediate state update
+    element.addClass("active selected");
+
+    if (element.hasClass("lig-nav-item")) {
       const activeImg = element.find("img");
       if (activeImg.length) {
         state.activeImageUrl = activeImg.attr("src");
-
-        // Update hidden input for cart
         updateCartImageInput(state.activeImageUrl);
+
+        // Update corresponding option
+        const imgSrc = state.activeImageUrl;
+        $(".yith-wapo-option, .wapo-option-image").each(function () {
+          const optionImg = $(this).find("img");
+          if (optionImg.length && optionImg.attr("src") === imgSrc) {
+            $(this).addClass("active selected");
+          }
+        });
       }
     } else if (
       element.hasClass("yith-wapo-option") ||
       element.hasClass("wapo-option-image")
     ) {
-      // If it's an option, update only options
-      $(".yith-wapo-option, .wapo-option-image").removeClass("active");
-      element.addClass("active");
-    } else {
-      // Otherwise, update everything
-      $(".lig-nav-item, .yith-wapo-option, .wapo-option-image").removeClass(
-        "active"
-      );
-      element.addClass("active");
+      const optionImg = element.find("img");
+      if (optionImg.length) {
+        const imgSrc = optionImg.attr("src");
+        $(".lig-nav-item").each(function () {
+          const navImg = $(this).find("img");
+          const compositeImgSrc = $(this).data("composite");
+          if (
+            (navImg.length && navImg.attr("src") === imgSrc) ||
+            compositeImgSrc === imgSrc
+          ) {
+            $(this).addClass("active selected");
+          }
+        });
+      }
     }
 
-    // Set focus to the element for keyboard users when appropriate
+    // Ensure proper focus
     if (
-      document.activeElement &&
-      document.activeElement.classList.contains("lig-nav-item") &&
-      element.hasClass("lig-nav-item")
+      element.hasClass("lig-nav-item") &&
+      document.activeElement !== element[0]
     ) {
       element.focus();
     }
+
+    // Force visual refresh
+    requestAnimationFrame(() => {
+      element.hide().show(0);
+    });
   };
 
   /**
