@@ -1,4 +1,10 @@
 jQuery(document).ready(($) => {
+  // Add mobile detection at the top
+  const isMobile =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
+
   // State tracking with modern variable declarations
   const state = {
     productImages: [],
@@ -10,7 +16,7 @@ jQuery(document).ready(($) => {
     compositeImages: {}, // Cache for composite images
     addedOptionImages: [], // Track all added option images,
     activeImageUrl: null, // Track the currently active image URL
-    zoomEnabled: true, // Track if zoom is enabled
+    zoomEnabled: !isMobile, // Disable zoom on mobile
     activeUpdateTimeout: null, // Timeout for active state updates
   };
 

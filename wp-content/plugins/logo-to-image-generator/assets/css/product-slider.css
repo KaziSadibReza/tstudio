@@ -157,15 +157,19 @@
 
 @media (max-width: 768px) {
   .lig-product-slider-container {
-    flex-direction: column;
+    flex-direction: column-reverse;
   }
 
+  .lig-nav-item img {
+    width: 90px;
+  }
   .lig-main-slider {
     max-width: 100%;
   }
 
   .lig-vertical-nav {
     width: 100%;
+    justify-content: center;
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
@@ -174,6 +178,9 @@
 
   .lig-nav-item {
     min-width: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 }
 
