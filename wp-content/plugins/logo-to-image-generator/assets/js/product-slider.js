@@ -770,11 +770,11 @@ jQuery(document).ready(($) => {
 
     // Synchronous removal of active states
     $(".lig-nav-item, .yith-wapo-option, .wapo-option-image").removeClass(
-      "active selected"
+      "active "
     );
 
     // Force immediate state update
-    element.addClass("active selected");
+    element.addClass("active ");
 
     if (element.hasClass("lig-nav-item")) {
       const activeImg = element.find("img");
@@ -787,7 +787,7 @@ jQuery(document).ready(($) => {
         $(".yith-wapo-option, .wapo-option-image").each(function () {
           const optionImg = $(this).find("img");
           if (optionImg.length && optionImg.attr("src") === imgSrc) {
-            $(this).addClass("active selected");
+            $(this).addClass("active ");
           }
         });
       }
@@ -805,7 +805,7 @@ jQuery(document).ready(($) => {
             (navImg.length && navImg.attr("src") === imgSrc) ||
             compositeImgSrc === imgSrc
           ) {
-            $(this).addClass("active selected");
+            $(this).addClass("active ");
           }
         });
       }
