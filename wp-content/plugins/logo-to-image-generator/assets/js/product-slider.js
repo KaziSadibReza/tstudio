@@ -14,10 +14,11 @@ jQuery(document).ready(($) => {
     sliderInitialized: false,
     logoImageUrl: null, // Store the logo image URL
     compositeImages: {}, // Cache for composite images
-    addedOptionImages: [], // Track all added option images,
+    addedOptionImages: [], // Track all added option images
     activeImageUrl: null, // Track the currently active image URL
     zoomEnabled: !isMobile, // Disable zoom on mobile
     activeUpdateTimeout: null, // Timeout for active state updates
+    isProcessing: false, // Flag to prevent multiple simultaneous operations
   };
 
   /**
@@ -38,7 +39,11 @@ jQuery(document).ready(($) => {
     // Add custom CSS for zoom lens
     if (!$("#lig-zoom-styles").length) {
       $("head").append(
-        '<style id="lig-zoom-styles">.zoomContainer .zoomWindow, .zoomLens { background-color: #fff !important; }</style>'
+        '<style id="lig-zoom-styles">' +
+          ".zoomContainer .zoomWindow, .zoomLens { background-color: #fff !important; }" +
+          ".lig-product-slider-container.processing { pointer-events: none; opacity: 0.7; }" +
+          ".lig-product-slider-container.processing * { pointer-events: none; }" +
+          "</style>"
       );
     }
 
@@ -139,7 +144,6 @@ jQuery(document).ready(($) => {
     setupWapoHandlers();
 
     // Check and select default option if no color option is selected
-    checkAndSelectDefaultOption();
 
     // Initialize zoom functionality after slider is ready
     if (state.zoomEnabled) {
@@ -393,115 +397,115 @@ jQuery(document).ready(($) => {
   };
 
   /**
-   * Set up WAPO handlers
+   * Set up yith handlers
    */
   const setupWapoHandlers = () => {
     // Remove existing handlers to avoid duplicates
-    $(".yith-wapo-addon-type-color .yith-wapo-option, .wapo-option-image").off(
-      "click.ligSlider"
-    );
+    $(".yith-wapo-addon-type-color .yith-wapo-option").off("click.ligSlider");
 
     // Handle WAPO option clicks
-    $(".yith-wapo-addon-type-color .yith-wapo-option, .wapo-option-image").on(
+    $(".yith-wapo-addon-type-color .yith-wapo-option").on(
       "click.ligSlider",
-      function () {
+      async function () {
         const option = $(this);
         const img = option.find("img");
 
-        // Extract background color from the color span
-        let backgroundColor = null;
-        const colorSpan = option.find(".color");
-        if (colorSpan.length) {
-          backgroundColor =
-            colorSpan.css("background-color") || colorSpan.attr("style");
-          // Extract color value if it's in style attribute format
-          if (backgroundColor && backgroundColor.includes("background:")) {
-            backgroundColor = backgroundColor.match(
-              /background:(#[A-Fa-f0-9]{3,6}|rgb\([^)]+\))/i
-            );
-            backgroundColor = backgroundColor ? backgroundColor[1] : null;
-          }
-          console.log("Extracted background color:", backgroundColor);
-
-          // Apply background color to main product navigation items
-          if (backgroundColor) {
-            // First remove any previously applied custom backgrounds
-            $(".lig-nav-item").removeClass("has-custom-background").css({
-              "background-color": "",
-              "border-color": "",
-            });
-
-            // Apply to main navigation items only (not composite images)
-            $(".lig-nav-item").each(function () {
-              const thumbImg = $(this).find("img");
-              if (
-                thumbImg.length &&
-                state.originalImages.includes(thumbImg.attr("src"))
-              ) {
-                $(this)
-                  .css({
-                    "background-color": backgroundColor,
-                    "border-color": backgroundColor,
-                  })
-                  .addClass("has-custom-background");
-              }
-            });
-          }
+        // Prevent multiple simultaneous operations
+        if (state.isProcessing) {
+          console.log("Operation in progress, please wait...");
+          return;
         }
 
-        if (img.length) {
-          const mockupImgSrc = img.attr("src");
-          console.log("Option clicked with mockup image:", mockupImgSrc);
+        state.isProcessing = true;
+        $(".lig-product-slider-container").addClass("processing");
 
-          // Skip empty or placeholder images
-          if (!mockupImgSrc || mockupImgSrc.includes("data:image/gif;base64")) {
-            console.log("Skipping placeholder/empty image");
-            return;
+        try {
+          // Extract background color from the color span
+          let backgroundColor = null;
+          const colorSpan = option.find(".color");
+          if (colorSpan.length) {
+            backgroundColor =
+              colorSpan.css("background-color") || colorSpan.attr("style");
+            if (backgroundColor && backgroundColor.includes("background:")) {
+              backgroundColor = backgroundColor.match(
+                /background:(#[A-Fa-f0-9]{3,6}|rgb\([^)]+\))/i
+              );
+              backgroundColor = backgroundColor ? backgroundColor[1] : null;
+            }
+
+            // Apply background color to main product navigation items
+            if (backgroundColor) {
+              $(".lig-nav-item").removeClass("has-custom-background").css({
+                "background-color": "",
+                "border-color": "",
+              });
+
+              $(".lig-nav-item").each(function () {
+                const thumbImg = $(this).find("img");
+                if (
+                  thumbImg.length &&
+                  state.originalImages.includes(thumbImg.attr("src"))
+                ) {
+                  $(this)
+                    .css({
+                      "background-color": backgroundColor,
+                      "border-color": backgroundColor,
+                    })
+                    .addClass("has-custom-background");
+                }
+              });
+            }
           }
 
-          // First clean up any previous added option images - this needs to completely remove any old images
-          removeAddedOptionImage();
+          if (img.length) {
+            const mockupImgSrc = img.attr("src");
 
-          if (
-            state.logoImageUrl &&
-            !state.originalImages.includes(mockupImgSrc)
-          ) {
-            // Show loading indicator directly on the slider
-            $(".lig-product-slider-container").addClass("loading");
+            if (
+              !mockupImgSrc ||
+              mockupImgSrc.includes("data:image/gif;base64")
+            ) {
+              console.log("Skipping placeholder/empty image");
+              return;
+            }
 
-            // Generate composite image
-            generateCompositeImage(mockupImgSrc, state.logoImageUrl)
-              .then((compositeImgSrc) => {
+            // Remove all previously generated images
+            removeGeneratedImages();
+
+            if (
+              state.logoImageUrl &&
+              !state.originalImages.includes(mockupImgSrc)
+            ) {
+              try {
+                const compositeImgSrc = await generateCompositeImage(
+                  mockupImgSrc,
+                  state.logoImageUrl
+                );
                 console.log("Generated composite image:", compositeImgSrc);
 
-                // Add the composite image to slider and mark both the option and new thumbnail as active
                 const newThumb = addImageToSlider(
                   compositeImgSrc,
                   mockupImgSrc,
                   backgroundColor
                 );
 
-                // Update the active state after the slider has been updated
+                // Update states after slider is updated
                 setTimeout(() => {
                   updateActiveState(option);
                   if (newThumb && newThumb.length) {
                     updateActiveState(newThumb);
                   }
                 }, 150);
-              })
-              .catch((error) => {
+              } catch (error) {
                 console.error("Error creating composite image:", error);
-                // Fallback to original behavior if composite generation fails
                 handleRegularOptionClick(mockupImgSrc, option, backgroundColor);
-              })
-              .finally(() => {
-                // Remove loading indicator
-                $(".lig-product-slider-container").removeClass("loading");
-              });
-          } else {
-            // Original product image or no logo available, use regular handling
-            handleRegularOptionClick(mockupImgSrc, option, backgroundColor);
+              }
+            } else {
+              handleRegularOptionClick(mockupImgSrc, option, backgroundColor);
+            }
           }
+        } finally {
+          state.isProcessing = false;
+          $(".lig-product-slider-container").removeClass("processing");
         }
       }
     );
@@ -513,8 +517,8 @@ jQuery(document).ready(($) => {
   const handleRegularOptionClick = (imgSrc, option, backgroundColor = null) => {
     // Different handling based on image type
     if (state.originalImages.includes(imgSrc)) {
-      // Original image: remove any added option image and navigate
-      removeAddedOptionImage();
+      // Original image: remove any generated images and navigate
+      removeGeneratedImages();
       const slideIndex = state.productImages.indexOf(imgSrc);
       navigateToSlide(slideIndex);
     } else if (state.optionImage === imgSrc) {
@@ -523,7 +527,7 @@ jQuery(document).ready(($) => {
       navigateToSlide(slideIndex);
     } else {
       // Different option image: remove previous and add new one
-      removeAddedOptionImage();
+      removeGeneratedImages();
       addImageToSlider(imgSrc, null, backgroundColor);
     }
 
@@ -538,6 +542,11 @@ jQuery(document).ready(($) => {
     if (state.addedOptionImages && state.addedOptionImages.length > 0) {
       console.log("Removing option images:", state.addedOptionImages);
 
+      // Only keep the main product images by filtering out all added images
+      state.productImages = state.productImages.filter((img) =>
+        state.originalImages.includes(img)
+      );
+
       // Stop slider to prevent issues during DOM manipulation
       if (
         state.sliderInitialized &&
@@ -546,39 +555,26 @@ jQuery(document).ready(($) => {
         $(".lig-main-slider").slick("unslick");
       }
 
-      // Remove all custom option images
-      state.addedOptionImages.forEach((imgInfo) => {
-        // Remove from productImages array
-        const index = state.productImages.indexOf(imgInfo.image);
-        if (index !== -1) {
-          state.productImages.splice(index, 1);
+      // Remove all custom slides
+      $(".lig-main-slider .lig-slide").each(function () {
+        const slideImg = $(this).find("img");
+        if (
+          slideImg.length &&
+          !state.originalImages.includes(slideImg.attr("src"))
+        ) {
+          $(this).remove();
         }
+      });
 
-        // More thorough slide removal
-        $(".lig-main-slider .lig-slide").each(function () {
-          const slideImg = $(this).find("img");
-          if (slideImg.length) {
-            const slideSrc = slideImg.attr("src");
-            if (slideSrc === imgInfo.image || slideSrc === imgInfo.mockup) {
-              $(this).remove();
-            }
-          }
-        });
-
-        // More thorough thumbnail removal
-        $(".lig-nav-item").each(function () {
-          const thumbComposite = $(this).data("composite");
-          const thumbImg = $(this).find("img");
-
-          if (
-            (thumbComposite && thumbComposite === imgInfo.image) ||
-            (thumbImg.length &&
-              (thumbImg.attr("src") === imgInfo.image ||
-                thumbImg.attr("src") === imgInfo.mockup))
-          ) {
-            $(this).remove();
-          }
-        });
+      // Remove all custom thumbnails
+      $(".lig-nav-item").each(function () {
+        const thumbImg = $(this).find("img");
+        if (
+          thumbImg.length &&
+          !state.originalImages.includes(thumbImg.attr("src"))
+        ) {
+          $(this).remove();
+        }
       });
 
       // Reset tracking completely
@@ -606,6 +602,52 @@ jQuery(document).ready(($) => {
   };
 
   /**
+   * Remove all generated images from the slider
+   */
+  const removeGeneratedImages = () => {
+    // Stop slider to prevent issues during DOM manipulation
+    if (
+      state.sliderInitialized &&
+      $(".lig-main-slider").hasClass("slick-initialized")
+    ) {
+      $(".lig-main-slider").slick("unslick");
+    }
+
+    // Remove all slides with generated-image attribute
+    $(".lig-main-slider .lig-slide[data-generated-image='true']").remove();
+
+    // Remove all thumbnails with generated-image attribute
+    $(".lig-nav-item[data-generated-image='true']").remove();
+
+    // Update productImages array to only keep original images
+    state.productImages = state.productImages.filter((img) =>
+      state.originalImages.includes(img)
+    );
+
+    // Reset tracking states
+    state.addedOptionImages = [];
+    state.optionImage = null;
+    state.mockupImage = null;
+
+    // Reinitialize slider if needed
+    if (state.productImages.length > 1) {
+      initializeSlick();
+      state.sliderInitialized = true;
+
+      // Navigate to first slide after cleanup
+      setTimeout(() => {
+        navigateToSlide(0);
+      }, 50);
+    } else if (state.productImages.length === 1) {
+      // If only one image left, just show it without slider
+      $(".lig-main-slider").html(
+        `<div class="lig-slide"><img src="${state.productImages[0]}" alt="Product"></div>`
+      );
+      state.sliderInitialized = false;
+    }
+  };
+
+  /**
    * Add image to slider
    */
   const addImageToSlider = (
@@ -613,16 +655,21 @@ jQuery(document).ready(($) => {
     originalSrc = null,
     backgroundColor = null
   ) => {
+    // First remove any existing generated images
+    removeGeneratedImages();
+
     // Set as the current option image and track the original mockup
     state.optionImage = imgSrc;
     state.mockupImage = originalSrc;
 
-    // Add to our tracking array
-    state.addedOptionImages.push({
-      image: imgSrc,
-      mockup: originalSrc,
-      backgroundColor: backgroundColor,
-    });
+    // Add to our tracking array (keeping only one item)
+    state.addedOptionImages = [
+      {
+        image: imgSrc,
+        mockup: originalSrc,
+        backgroundColor: backgroundColor,
+      },
+    ];
 
     // Check if this image is already in the slider
     if (state.productImages.includes(imgSrc)) {
@@ -651,12 +698,12 @@ jQuery(document).ready(($) => {
     // Add to tracking array
     state.productImages.push(imgSrc);
 
-    // Create DOM elements
+    // Create DOM elements with generated-image and auto-active attributes
     const newSlide = $(
-      `<div class="lig-slide"><img src="${imgSrc}" alt="Product option"></div>`
+      `<div class="lig-slide active" data-generated-image="true" data-auto-active="true"><img src="${imgSrc}" alt="Product option"></div>`
     );
     const newNavItem = $(
-      `<div class="lig-nav-item" data-composite="${imgSrc}"><img src="${imgSrc}" alt="Product option thumbnail"></div>`
+      `<div class="lig-nav-item active" data-composite="${imgSrc}" data-generated-image="true" data-auto-active="true"><img src="${imgSrc}" alt="Product option thumbnail"></div>`
     );
 
     // Apply border color to composite image thumbnails
@@ -680,7 +727,6 @@ jQuery(document).ready(($) => {
       state.sliderInitialized = true;
 
       // Navigate to the newly added slide
-      // Use timeout to ensure DOM is ready
       setTimeout(() => {
         navigateToSlide(state.productImages.length - 1);
       }, 100);
@@ -689,10 +735,22 @@ jQuery(document).ready(($) => {
       state.sliderInitialized = false;
     }
 
+    // Update the active image URL to the generated image
+    state.activeImageUrl = imgSrc;
+    updateCartImageInput(imgSrc);
+
     // Set up event handlers on the new thumbnail
     setupSliderEvents();
 
-    // Return the new thumbnail so we can manipulate it further
+    // Debug: Log current state
+    console.group("Generated Images Debug Info");
+    console.log("Original Images:", state.originalImages);
+    console.log("Added Option Images:", state.addedOptionImages);
+    console.log("Current Option Image:", state.optionImage);
+    console.log("Current Mockup Image:", state.mockupImage);
+    console.log("Total Images:", state.productImages);
+    console.groupEnd();
+
     return newNavItem;
   };
 
@@ -700,11 +758,7 @@ jQuery(document).ready(($) => {
    * Navigate to specific slide
    */
   const navigateToSlide = (index) => {
-    if (
-      state.productImages.length > 1 &&
-      index >= 0 &&
-      index < state.productImages.length
-    ) {
+    if (state.productImages.length > 1) {
       if (
         !state.sliderInitialized ||
         !$(".lig-main-slider").hasClass("slick-initialized")
@@ -713,13 +767,13 @@ jQuery(document).ready(($) => {
         state.sliderInitialized = true;
       }
 
-      console.log("Navigating to slide:", index);
+      console.log("Navigating to slide: 1");
 
-      // Go to the slide
-      $(".lig-main-slider").slick("slickGoTo", index);
+      // Always go to slide 1
+      $(".lig-main-slider").slick("slickGoTo", 1);
 
       // Find and activate matching thumbnail
-      const imgSrc = state.productImages[index];
+      const imgSrc = state.productImages[1]; // Use index 1 to match the slide
       let matchingThumb = null;
 
       // More thorough thumbnail matching
@@ -740,9 +794,9 @@ jQuery(document).ready(($) => {
         }
       });
 
-      // Use index as fallback
+      // Use index as fallback, but still use index 1
       if (!matchingThumb || !matchingThumb.length) {
-        matchingThumb = $(".lig-nav-item").eq(index);
+        matchingThumb = $(".lig-nav-item").eq(1);
       }
 
       // Update active state
@@ -763,18 +817,30 @@ jQuery(document).ready(($) => {
   const updateActiveState = (element) => {
     if (!element || !element.length) return;
 
+    // Check if there's an auto-active element and we're not clicking it
+    const autoActive = $('[data-auto-active="true"]');
+    if (
+      autoActive.length &&
+      !element.is(autoActive) &&
+      !element.hasClass("yith-wapo-option")
+    ) {
+      // If we're explicitly selecting a non-generated image, remove auto-active
+      element
+        .closest(".lig-main-slider, .lig-vertical-nav")
+        .find('[data-auto-active="true"]')
+        .removeAttr("data-auto-active");
+    }
+
     // Clear any pending updates
     if (state.activeUpdateTimeout) {
       clearTimeout(state.activeUpdateTimeout);
     }
 
     // Synchronous removal of active states
-    $(".lig-nav-item, .yith-wapo-option, .wapo-option-image").removeClass(
-      "active "
-    );
+    $(".lig-nav-item, .yith-wapo-option").removeClass("active");
 
     // Force immediate state update
-    element.addClass("active ");
+    element.addClass("active");
 
     if (element.hasClass("lig-nav-item")) {
       const activeImg = element.find("img");
@@ -784,17 +850,14 @@ jQuery(document).ready(($) => {
 
         // Update corresponding option
         const imgSrc = state.activeImageUrl;
-        $(".yith-wapo-option, .wapo-option-image").each(function () {
+        $(".yith-wapo-option").each(function () {
           const optionImg = $(this).find("img");
           if (optionImg.length && optionImg.attr("src") === imgSrc) {
-            $(this).addClass("active ");
+            $(this).addClass("active");
           }
         });
       }
-    } else if (
-      element.hasClass("yith-wapo-option") ||
-      element.hasClass("wapo-option-image")
-    ) {
+    } else if (element.hasClass("yith-wapo-option")) {
       const optionImg = element.find("img");
       if (optionImg.length) {
         const imgSrc = optionImg.attr("src");
@@ -805,7 +868,7 @@ jQuery(document).ready(($) => {
             (navImg.length && navImg.attr("src") === imgSrc) ||
             compositeImgSrc === imgSrc
           ) {
-            $(this).addClass("active ");
+            $(this).addClass("active");
           }
         });
       }
@@ -843,59 +906,6 @@ jQuery(document).ready(($) => {
       // Add to the cart form
       $("form.cart").append(input);
       console.log("Updated cart image input with URL:", imageUrl);
-    }
-  };
-
-  /**
-   * Check if any color option is selected, and if not, select the first option
-   */
-  const checkAndSelectDefaultOption = () => {
-    // Check if any color option is already selected
-    const hasSelectedOption =
-      $(".yith-wapo-addon-type-color .yith-wapo-option.selected").length > 0;
-
-    if (!hasSelectedOption) {
-      console.log(
-        "No color option selected, delaying auto-selection to ensure images load"
-      );
-
-      // Use a longer delay to ensure images have adequate time to load
-      setTimeout(() => {
-        // Check again if an option was selected during the wait
-        if (
-          $(".yith-wapo-addon-type-color .yith-wapo-option.selected").length > 0
-        ) {
-          console.log(
-            "An option was selected during wait time, skipping auto-selection"
-          );
-          return;
-        }
-
-        // Get the first option
-        const firstOption = $(
-          ".yith-wapo-addon-type-color .yith-wapo-option"
-        ).first();
-
-        if (!firstOption.length) {
-          console.log("No color options found");
-          return;
-        }
-
-        // Safety check - don't auto-select if page isn't fully rendered
-        if (!document.readyState === "complete") {
-          console.log("Page not fully loaded yet, skipping auto-selection");
-          return;
-        }
-
-        console.log("Auto-selecting first color option");
-
-        // Simply select the first option without checking image load status
-        // This is more reliable than trying to determine if images are loaded
-        firstOption.trigger("click");
-        firstOption.addClass("selected");
-      }, 1000); // Increased delay to 1000ms for better reliability
-    } else {
-      console.log("Color option already selected, no auto-selection needed");
     }
   };
 
@@ -939,7 +949,6 @@ jQuery(document).ready(($) => {
         setupSliderEvents();
       }
       // Check and select default after AJAX as well
-      checkAndSelectDefaultOption();
     }, 300);
   });
 
@@ -947,7 +956,6 @@ jQuery(document).ready(($) => {
   $(document).on("yith-wapo-product-option-changed", function () {
     setupWapoHandlers();
     // Check if we need to select the default after options change
-    checkAndSelectDefaultOption();
   });
 
   // Handle add to cart button click to ensure the selected image is captured
